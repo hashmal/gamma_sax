@@ -1,0 +1,109 @@
+-- Copyright (c) 2014, Jérémy Pinat.
+------------------------------------------------------------------------------
+
+const MAX_ATTR_COUNT        int := 64
+const MAX_STRING_POOL_SIZE  int := 65536
+const MAX_STACK_DEPTH       int := 512
+
+var stringPool  (MAX_STRING_POOL_SIZE)char
+var stack       (MAX_STACK_DEPTH)int
+
+var stringPoolCursor    int := 0
+var stackCursor         int := 0
+
+operation spWrite(c char) {
+    if stringPoolCursor > MAX_STRING_POOL_SIZE {
+        -- ERROR
+    }
+    stringPool(stringPoolCursor)    := c
+    stringPoolCursor                := stringPoolCursor + 1
+}
+
+operation spCursor() ~char {
+    return stringPool(stringPoolCursor)~
+}
+
+operation spPush() {
+    if stackCursor > MAX_STACK_DEPTH {
+        -- ERROR
+    }
+    stack(stackCursor)  := stringPoolCursor
+    stackCursor         := stackCursor + 1
+}
+
+operation spPop() {
+    stackCursor         := stackCursor - 1
+    stringPoolCursor    := stack(stackCursor)
+}
+
+------------------------------------------------------------------------------
+
+object SaxParser Object {
+    --
+}
+
+operation parse(parser SaxParser, xml ~char) {
+    var END int := 0
+    var cc ~char := xml
+    while cc() != END {
+        spPush()
+        var charData ~char := spCursor()
+        while cc() != "<"() and cc() != END { spWrite(cc()) cc := cc(1)~ }
+        spWrite(0 as char)
+        if charData() { handleText(parser, charData) }
+        spPop()
+
+        if cc() = "<"() {
+            cc := cc(1)~ -- "<"
+            if cc() = "/"() {
+                cc := cc(1)~ -- "/"
+                spPush()
+                var tagName ~char := spCursor()
+                while cc() != ">"() { spWrite(cc()) cc := cc(1)~ }
+                spWrite(0 as char)
+                spPop()
+                cc := cc(1)~ -- ">"
+                handleElementEnd(parser, tagName)
+            } else {
+                spPush()
+                var tagName ~char := spCursor()
+                while cc() != ">"() and cc() != " "() {
+                    spWrite(cc())
+                    cc := cc(1)~
+                }
+                spWrite(0 as char)
+                var attrs (2 * MAX_ATTR_COUNT)~char
+                var i int := 0
+                while cc() = " "() { cc := cc(1)~ }
+                while cc() != ">"() {
+                    attrs(i*2) := spCursor()
+                    while cc() != "="() { spWrite(cc()) cc := cc(1)~ }
+                    spWrite(0 as char)
+                    cc := cc(2)~ -- ="
+                    attrs(i*2+1) := spCursor()
+                    while cc() != "\""() { spWrite(cc()) cc := cc(1)~ }
+                    spWrite(0 as char)
+                    cc := cc(1)~ -- "
+                    while cc() = " "() { cc := cc(1)~ }
+                    i := i + 1
+                }
+                cc := cc(1)~ -- >
+                attrs(i*2) := 0 as ~char    attrs(i*2+1) := 0 as ~char
+                spPop()
+                handleElementStart(parser, tagName, attrs)
+            }
+        }
+    }
+}
+
+operation handleElementStart(erg SaxParser, tagName ~char, attrs ~~char) {
+    --
+}
+
+operation handleElementEnd(erg SaxParser, tagName ~char) {
+    --
+}
+
+operation handleText(erg SaxParser, text ~char) {
+    --
+}

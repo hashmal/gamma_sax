@@ -1,0 +1,39 @@
+-- Copyright (c) 2014, Jérémy Pinat.
+------------------------------------------------------------------------------
+
+-- This is a minimal SAX parser. It assumes the input is syntactically valid,
+-- so don't use this to parse untrusted XML. Aside from the SaxParser object
+-- itself, no dynamic allocation or recursion is performed; it means this
+-- parser is immune to memory leaks and stack overflows. That being said,
+-- it is not thread-safe at all. It will also fail on large text inputs (this
+-- limitation does not apply to the entire string being parsed, only segments
+-- of it that does not contain tags, e.g `<tag>TEXT_INPUT</tag>`.)
+
+-- Hard limits
+-- -----------
+
+-- - 63 attributes on a single element
+-- - 512 levels of nested elements
+-- - 65536 characters in a text, including the null-terminating character
+-- - 65536 characters for element name + attribute names + attribute values,
+-- - including null-terminating characters
+
+-- It is possible to change these limits in the source file (requiring a
+-- recompilation of the module.)
+
+with "object"
+
+object SaxParser Object
+-- Subclass this to create a custom SAX parser. You can store parsed data in
+-- instance variables.
+
+operation parse(erg SaxParser, obl ~char)
+
+-- Operations to override to implement custom behavior:
+
+operation handleElementStart(erg SaxParser, tagName ~char, attrs ~~char)
+-- Odd `attrs` elements contain attribute names, even `attrs` elements contain
+-- attribute values. The last pair of the array is a null sentinel.
+
+operation handleElementEnd(erg SaxParser, tagName ~char)
+operation handleText(erg SaxParser, text ~char)

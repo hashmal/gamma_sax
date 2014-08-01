@@ -1,0 +1,6 @@
+A SAX parser written in Gamma. Does not yet handle the full XML specification.
+
+It does not perform dynamic allocation or recursion. Consult sax.gas for more
+details.
+
+License: MIT
